@@ -1,33 +1,18 @@
 #pragma once
+
+#include "base_mesh.hpp"
 #include "tri_mesh.hpp"
 #include "ngon_mesh.hpp"
+#include <type_traits>
 
 
 namespace mesh {
 
 
-template <typename V, typename VertCloud>
-inline TriMesh<V, VertCloud> toTriMesh(const Mesh<V, 4U, VertCloud>& quad_mesh) {
+//template <typename MeshType, typename = typename std::enable_if<std::is_base_of<BaseMesh, MeshType>::value>::type>
+//template <typename V, typename PointCloud>
+//template <typename MeshType, typename V, typename PointCloud, typename = typename std::enable_if_t<std::is_base_of_v<BaseMesh<V, PointCloud>, MeshType>>>
 
-	// Smallest Diagonal Quad Triangulation ...
-
-
-
-	return TriMesh<V, VertCloud>();
-
-}
-
-
-template <typename V, typename VertCloud>
-inline TriMesh<V, VertCloud> toTriMesh(const NgonMesh<V, VertCloud>& mesh) {
-
-	if (!mesh.is_triangulated())
-		throw std::invalid_argument("")
-
-
-	return TriMesh<V, VertCloud>();
-
-}
 
 
 }

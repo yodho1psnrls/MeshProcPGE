@@ -2,15 +2,20 @@
 #include "tri_mesh.hpp"
 #include "../utilities.hpp"
 
+// TODO: Implement this to work on generic MeshType, not only on TriMesh or QuadMesh
+//        and make it directly to create a quad mesh, not triangulized quad mesh !
+
 namespace mesh {
 
 
 template <typename V, typename PointCloud>
-inline TriMesh<V, PointCloud> generate_plane(const int div, const float screen_ratio = 1.0f) {
+inline TriMesh<V, PointCloud> generate_plane(const uint div, const float screen_ratio = 1.0f) {
 	TriMesh<V, PointCloud> mesh;
 
-	for (int i = 0; i < div + 1; i++)
-		for (int j = 0; j < div + 1; j++) {
+  using vert_handle = typename TriMesh<V, PointCloud>::vert_handle;
+
+	for (uint i = 0U; i < div + 1U; i++)
+		for (uint j = 0U; j < div + 1U; j++) {
 			V v;
 
 			v.uv = olc::vf2d(float(i) / div, float(j) / div); // from 0 to 1
@@ -23,10 +28,10 @@ inline TriMesh<V, PointCloud> generate_plane(const int div, const float screen_r
 
 		}
 
-	for (int i = 0; i < div; i++) {
-		for (int j = 0; j < div; j++) {
+	for (uint i = 0U; i < div; i++) {
+		for (uint j = 0U; j < div; j++) {
 
-			int index = i + j * (div + 1);
+			uint index = i + j * (div + 1U);
      
       //    1---3
       //    |\  |
@@ -34,14 +39,18 @@ inline TriMesh<V, PointCloud> generate_plane(const int div, const float screen_r
       //    |  \|
 		  //    0---2
 
-      //            (0)      (1)           (2)
-      //mesh.add_face(index, index + 1, index + (div + 1));
-      mesh.add_face(index, index + (div + 1), index + 1);
+      mesh.add_face(
+        vert_handle(index),                   // 0
+        vert_handle(index + (div + 1U)),      // 1
+        vert_handle(index + 1U)               // 2
+      );
 
-      //               (1)             (3)                 (2)
-      //mesh.add_face(index + 1, index + (div + 1) + 1, index + (div + 1));
-		  mesh.add_face(index + 1, index + (div + 1), index + (div + 1) + 1);
-
+      mesh.add_face(
+        vert_handle(index + 1),               // 1
+        vert_handle(index + (div + 1U)),      // 3
+        vert_handle(index + (div + 1U) + 1U)  // 2
+      );
+      
     }
 	}
 

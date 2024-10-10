@@ -1,13 +1,14 @@
 #pragma once
-#include "../utilities.hpp"		// Iterable
+//#include "../utilities.hpp"		// Iterable
+#include "handlers.h"
 #include <vector>
+//#include <iterator> // For iterator tags
 
 
 // ALL HANDLERS WILL BE INDEXES, THEY ARE JUST SEPARATED INTO DIFFERENT CATEGORIES
 //  FOR TYPE SAFETY
 
 
-using uint = unsigned int;
 
 // DIFFERENT POINT CLOUD REPRESENTATIONS SPECIALIZE THE VERT_CLOUD TAG/VERT_TRAITS
 
@@ -61,32 +62,52 @@ public:
 
 namespace pc {
 
-// A Defauld Vertex Cloud which is just an array of vertices
+
+// A Default Vertex Cloud which is just an array of vertices
 // Supports index based notation , but if you search closes point,
 // it uses linear search, so it is not so optimal for that
+//template <typename VertType>
 template <typename V>
 class PointVec {
-
-protected:
-
-	std::vector<V> _vertices;
-
 public:	
 
-	class vert_handle;
+  // The other classes that inherit PointCloud as a policy dont nececarily need
+  //  to specify the vertex type V again
+  //using V = VertType;
+	using vert_handle = index_vert_handle;
 
 	// Type aliases for a valid PointVec
 //	using vert_handle = vert_handle;
 	using vert_type = V;
+  using vert_container = PointVec<V>;
 
 
 	PointVec() : _vertices() {};
 	PointVec(const std::vector<V>& vertices) : _vertices(vertices) {}
+  operator std::vector<V>&() { return _vertices; }
+  operator const std::vector<V>&() const { return _vertices; }
+
+
+  template<typename IterType>
+  bool are_valid_indices(IterType begin_it, IterType end_it) const {
+    for(IterType it = begin_it; it != end_it; ++it)
+      if (!is_in_range(*it))
+        return false;
+
+    return true;
+  }
+ 
+
+  bool is_in_range(const vert_handle vh) const {
+    //return *vh >= 0 && *vh < verts_size();
+    return uint(vh) >= 0 && uint(vh) < verts_size();
+  }
+
 
 
 	// Operations
 	vert_handle add_vert(const V& vertex) {
-		vert_handle vi = _vertices.size();
+		vert_handle vi(_vertices.size());
 		
 		_vertices.push_back(vertex);
 
@@ -96,17 +117,24 @@ public:
 
 	// Getters
 	V& vert(const vert_handle vert_id) {
-		return _vertices[vert_id];
+    if (!is_in_range(vert_id))
+      throw std::out_of_range("Out of range vertex in PointVec");   
+   
+    return _vertices[vert_id];
 	}
 
 	const V& vert(const vert_handle vert_id) const {
-		return _vertices[vert_id];
+    if (!is_in_range(vert_id))
+      throw std::out_of_range("Out of range vertex in PointVec");
+
+    return _vertices[vert_id];
 	}
 
 
 	// Iterables
 	Iterable<vert_handle> verts() const {
-		return Iterable<vert_handle>(0U, _vertices.size());
+		return Iterable<vert_handle>(
+      (vert_handle)0U, (vert_handle)_vertices.size());
 	}
 
 
@@ -115,44 +143,13 @@ public:
   }
 
 
-	// Vertex Handler
-	class vert_handle {
-		int id;
+protected:
 
-		friend class std::hash<vert_handle>;
-
-	public:
-
-    static const int INVALID_INDEX = -1;
-
-		vert_handle(const int id = INVALID_INDEX) : id(id) {}
-
-		operator int& () { return id; }
-		operator int() const { return id; }
-
-
-		// We make this so the Iterable works and returns a vertex handler
-		vert_handle& operator*() { return *this; }
-		vert_handle operator*() const { return *this; }
-
-	};
+	std::vector<V> _vertices;
 
 
 };
 
-
-/*
-namespace std {
-
-template <typename V>
-struct hash<typename PointVec<V>::vert_handle> {
-	size_t operator()(const typename PointVec<V>::vert_handle vert) const {
-		return std::hash<int>()(vert.id);
-	}
-};
-
-}
-*/
 
 /*template <typename V>
 class PointVec<V, std::vector<V>> : protected std::vector<V> {
@@ -178,6 +175,4 @@ public:
 
 
 }
-
-
 

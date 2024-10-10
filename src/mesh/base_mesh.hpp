@@ -2,8 +2,6 @@
 #include "../point_cloud/point_vec.hpp"
 // #include "../utilities.hpp"	// Iterable
 
-typedef unsigned int vert_handle;
-
 // The Vertex Container should support operator[] and std::vector syntax
 
 namespace mesh {
@@ -14,26 +12,29 @@ template <
 	typename V,							 // Vertex Type
 	typename PointCloud = pc::PointVec<V>
 >
+//template <typename PointCloud>
 class BaseMesh : public PointCloud {
 public:
 
+
+//  using typename PointCloud::V;
+  using typename PointCloud::vert_type;
 
   using typename PointCloud::vert_handle;
   using PointCloud::add_vert;
   using PointCloud::verts_size;
   //using PointCloud::PointCloud;
+  using PointCloud::vert;
 
-/*
-  template <typename IterType>
+  bool is_valid() const;
+  using PointCloud::are_valid_indices;
+  using PointCloud::is_in_range;
+
+  /*template <typename IterType>
   inline face_handle add_face(
     IterType begin_new_indices,
     IterType end_new_indices
-  );
-*/
-
-protected:
- 
-	std::vector<vert_handle> _indices{};
+  );*/
 
 
 	BaseMesh(
@@ -42,10 +43,14 @@ protected:
       = std::vector<vert_handle>()
   );
 
+  // The count of all face adjacent edges (net face degree or half-edges count)
+  uint indices_size() const;
 
-  template<typename IterType>
-  bool are_valid_indices(IterType begin_it, IterType end_it) const;
+  void reserve_indices(size_t new_capacity);
 
+protected:
+ 
+	std::vector<vert_handle> _indices{};
 
 };
 
@@ -53,22 +58,37 @@ protected:
   // ======================= IMPLEMENTATION ========================= //
 
 
+  template <typename V, typename PointCloud>
+  inline bool BaseMesh<V, PointCloud>::is_valid() const {
+    for(vert_handle vh : _indices)
+      if (!is_in_range(vh))
+        return false;
+
+    return true;
+  }
+
+
 template <typename V, typename PointCloud>
 BaseMesh<V, PointCloud>::BaseMesh(
     const PointCloud& vertices,
     const std::vector<vert_handle>& indices
-) : PointCloud(vertices), _indices(indices) {}
+) : PointCloud(vertices), _indices(indices) {
+  
+  if (!is_valid())
+    throw std::out_of_range("Some of the indices contain out of range vertex ids");
+
+}
 
 
-template<typename V, typename PointCloud>
-template<typename IterType>
-inline bool BaseMesh<V, PointCloud>::are_valid_indices(IterType begin_it, IterType end_it) const {
+template <typename V, typename PointCloud>
+inline uint BaseMesh<V, PointCloud>::indices_size() const {
+  return _indices.size();
+}
 
-  for(IterType it = begin_it; it != end_it; ++it)
-    if (*it < 0 || *it >= verts_size())
-      return false;
 
-  return true;
+template <typename V, typename PointCloud>
+inline void BaseMesh<V, PointCloud>::reserve_indices(size_t new_capacity) {
+  _indices.reserve(new_capacity);
 }
 
 

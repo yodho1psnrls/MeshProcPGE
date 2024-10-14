@@ -142,6 +142,10 @@ public:
     return _vertices.size();
   }
 
+  void reserve_verts(const uint new_capacity) {
+    _vertices.reserve(new_capacity);
+  }
+
 
 protected:
 

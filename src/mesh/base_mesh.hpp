@@ -29,6 +29,7 @@ public:
   bool is_valid() const;
   using PointCloud::are_valid_indices;
   using PointCloud::is_in_range;
+//  using PointCloud::reserve_verts;
 
   /*template <typename IterType>
   inline face_handle add_face(

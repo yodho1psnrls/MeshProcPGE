@@ -6,13 +6,25 @@
 #include "point_cloud/point_vec.hpp"
 #include "utilities.hpp"
 
-#include "mesh/he/he_mesh.hpp"
 
 #include "../olc/olcPixelGameEngine.h"
 #include "vertex/vertex.h"
 #include <iostream>
 
-#include <triangulate.hpp>
+//#include <triangulate.hpp>
+#include "mesh/triangulate.hpp"
+#include "mesh/he/subdivision.hpp"
+#include "mesh/he/smoothing.hpp"
+#include "mesh/he/simplification.hpp"
+#include "mesh/he/remeshing.hpp"
+#include "mesh/he/edge_flip.hpp"
+#include "mesh/he/path_find.hpp"
+
+
+#include <random>
+
+#include "mesh/he/he_mesh.hpp"
+#include "mesh/he/utilities.hpp"
 
 
 const float PINDIST = 8.0f;   // the range that the mouse will select a vertex
@@ -22,7 +34,7 @@ const int INIT_HEDGE_ID = 0; // 15
 class Example : public olc::PixelGameEngine {
 
   using V = Vertex;
-  using Mesh = typename mesh::TriMesh<V, pc::PointVec<V>>;
+  using Mesh = typename mesh::Mesh<V, pc::PointVec<V>>;
   using HEMesh = typename mesh::he::HEMesh<V>;
   
   //using face_handle = typename HEMesh::face_handle;
@@ -202,7 +214,10 @@ public:
 
 
   void keyInput() {
-    
+   
+    using namespace mesh;
+    using namespace mesh::he;
+
     Mesh& m = mesh;
     HEMesh& hm = he_mesh;
 
@@ -296,47 +311,95 @@ public:
     }
 
 
-    if (GetKey(olc::F).bReleased) {
+//    if (GetKey(olc::R).bReleased)
+//      he_mesh.flip_edge(hedge_id);
+
+
+    if (GetKey(olc::F).bPressed) {
       next_history.clear();
       prev_history.push_back({he_mesh, hedge_id});
 
-      HEMesh &hm = he_mesh;
+      //hm.collapse_edge(hedge_id, edge_center(hm, hedge_id));  
+//      hm.collapse_face(hedge_id, face_center(hm, hedge_id));  // Collapse on a border on a 3x3 grid gives an error
 
-/*      auto fh = he_mesh.face(hedge_id);
-      if (he_mesh.is_border_face(fh))
-        he_mesh.make_face(fh);
-      else
-        he_mesh.make_border(fh);*/
+      //vert_handle vh = hm.add_vert(face_center(hm, hedge_id));
+      //hm.collapse_face(hedge_id, vh);
+      //hm.remove_internal_edges(hedge_id); 
 
-      //hm.flip_edge(hedge_id);
-      //hm.refine_edge(hedge_id);
-
-      //V v = hm.vert(hm.head(hedge_id));
-      //v.pos += olc::vf2d(10.0f, -15.0f);
-      //hm.split_vert_to_faces(hedge_id, hm.twin(hm.next(hedge_id)), v);
-     
-      //hm.split_edge(hedge_id);
-      //hm.clip_corner(hedge_id);
+//      remesh_isotropic(hm);
+      //delanay_edge_flip(hm); 
+//      flip_edges(hm, valence_flip_condition);
+      //simplify(hm);      
       
-      //hm.collapse_edge(hedge_id);
-      //hm.collapse_face(hedge_id);
-      
-      //hm.bevel_vert(hm.head(hedge_id));
-      
-      //hm.bevel_edge(hedge_id);
+      //quad_subdivision(hm);
 
-      //hm.bevel_face(hedge_id);
-      //hm.cut_edge(hedge_id);
+//      hm.bevel_edge(hedge_id, 0.5f);
+//      hm.cut_edge(hedge_id);
 
-      //hm.join_faces(hedge_id, hm.twin(hedge_id));
-      
-      hedge_id = hm.remove_internal_edges(hedge_id);
+//      triangulate_min_diagonal(hm);
+//      triangulate_min_corner<mesh::Mesh<Vertex>, Vertex, pc::PointVec<Vertex>>(mesh);
 
 
-
-      he_mesh.check_validity();
+      hm.check_validity();
     }
   
+    
+    // Randomize vertex positions to test the isotropic remeshing
+    //if (GetKey(olc::G).bPressed) {
+    if (GetKey(olc::G).bHeld) {
+      next_history.clear();
+      prev_history.push_back({he_mesh, hedge_id});
+    
+      he_mesh = he_mesh >> hedge_id;
+
+      /*auto patch_faces = he_mesh >> hedge_id;
+      for(auto f : patch_faces) {
+        hedge_handle begin_id = he_mesh.hedge(f);
+        hedge_handle he = begin_id;
+
+        do {
+          const V& a = he_mesh.vert(he_mesh.head(he));
+          const V& b = he_mesh.vert(he_mesh.tail(he));
+
+          DrawLine(a.pos, b.pos, olc::CYAN);
+
+          he = he_mesh.next(he);
+        } while (he != begin_id);
+      }*/
+
+      /*int n = 60;
+      for(vert_handle vh : he_mesh.verts()) {
+        if (he_mesh.is_border_vert(vh))
+          continue;
+
+        V& v = he_mesh.vert(vh);
+        v.pos += olc::vf2d(rand() % n - n / 2, rand() % n - n / 2);
+      }*/
+    }
+    
+
+    if (GetKey(olc::B).bHeld) {
+
+      hedge_handle he1 = hedge_id;
+      hedge_handle he2 = hedge_id;
+
+      do {
+        he2 = hm.next(hm.next(he1));
+
+        while(hm.next(he2) != he1) {
+        //while(hm.next(he2) != hedge_id) {
+          const V& a = hm.vert(hm.head(he1));
+          const V& b = hm.vert(hm.head(he2));
+
+          drawHalfArrow(a.pos, b.pos, olc::YELLOW);
+          
+          he2 = hm.next(he2);
+        }
+        
+        he1 = hm.next(he1);
+      } while(he1 != hedge_id);
+
+    }
 
   }
 
@@ -437,7 +500,9 @@ public:
 public:
   bool OnUserCreate() override {
 
-    mesh = mesh::generate_plane<V, pc::PointVec<V>>(3, 0.9f);
+    mesh = mesh::generate_quad_plane<Mesh>(3, 0.9f);
+    triangulate_min_corner(mesh);
+
     he_mesh = mesh;
     //selected_vert_id = vert_handle::INVALID_INDEX;
     selected_vert_id = vert_handle();
@@ -452,6 +517,7 @@ public:
     he_mesh.check_validity();
     print_info(he_mesh);
     //print_info(mesh);
+
 
     //std::cout << he_mesh.face_size(he_mesh.hedge(he_mesh.borders().begin())) << "\n";
     //std::cout << he_mesh.borders().begin() << "\n";
@@ -468,13 +534,19 @@ public:
 //    mesh::NgonMesh<V, pc::PointVec<V>> temp = he_mesh;
 //    mesh = temp;
 
-    he_mesh.remove_isolated_verts();
-    he_mesh.shrink();
+ //   he_mesh.remove_isolated_verts();
+ //   he_mesh.shrink();
     mesh = triangulated(he_mesh);
- 
+
  //   auto temp = he_mesh;
  //   temp.shrink();
  //   mesh = temp;
+
+
+//    std::vector<hedge_handle> path = shortest_path(he_mesh, vert_handle(0), he_mesh.head(hedge_id)).first; 
+//    for(hedge_handle e : path)
+//      drawHalfEdge(he_mesh, e, olc::CYAN);
+
 
     // FillCircle(vf2d());
 

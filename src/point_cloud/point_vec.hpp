@@ -100,7 +100,8 @@ public:
 
   bool is_in_range(const vert_handle vh) const {
     //return *vh >= 0 && *vh < verts_size();
-    return uint(vh) >= 0 && uint(vh) < verts_size();
+    //return uint(vh) >= 0 && uint(vh) < verts_size();
+    return vh < verts_size();
   }
 
 
@@ -145,6 +146,10 @@ public:
   void reserve_verts(const uint new_capacity) {
     _vertices.reserve(new_capacity);
   }
+
+
+  void clear() { _vertices.clear(); }
+  bool empty() const { return _vertices.empty(); }
 
 
 protected:

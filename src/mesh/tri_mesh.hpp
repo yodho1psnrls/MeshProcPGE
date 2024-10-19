@@ -40,11 +40,13 @@ public:
     const PointCloud& vertices = PointCloud(),
     const std::vector<vert_handle>& indices
       = std::vector<vert_handle>())
-    : Mesh<V, PointCloud>::Mesh(3U, vertices, indices) {
+    : Mesh<V, PointCloud>::Mesh(vertices, indices) {
+    
+    this->n = 3U;
 
 	  if(!is_valid())
       throw std::invalid_argument("Non valid indices count or invalid vert_handle in the indices");
-  } 
+ } 
 
 
   template <typename MeshType, typename = typename std::enable_if_t<
@@ -52,6 +54,7 @@ public:
     !std::is_same_v<MeshType, TriMesh>
   >>
   TriMesh(const MeshType& mesh) : Mesh<V, PointCloud>(mesh) { 
+//    if (this->n != Mesh<V, PointCloud>::INVALID_FACE_SIZE)
     if (this->n != 3U)
       throw std::invalid_argument("The converted MeshType should be consisted of triangle faces");
   }

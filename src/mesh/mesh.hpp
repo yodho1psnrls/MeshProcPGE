@@ -49,9 +49,10 @@ public:
   using BaseMesh<V, PointCloud>::are_valid_indices;
   using face_handle = index_face_handle;
 
+  // Non-Selected Size per Face
+  static const uint INVALID_FACE_SIZE = -1;
 
 	Mesh(
-    const uint N = 3U,
     const PointCloud& vertices = PointCloud(),
     const std::vector<vert_handle>& indices
       = std::vector<vert_handle>()
@@ -72,6 +73,8 @@ public:
 //  Mesh(const Mesh& mesh);
 
 
+  void clear();
+  using BaseMesh<V, PointCloud>::empty;
 	bool is_valid() const;
 
 
@@ -101,6 +104,10 @@ public:
 //    verts(const face_handle fh);
 
 
+  template <typename PC = PointCloud, typename = typename std::enable_if<std::is_base_of_v<pc::PointVec<V>, PC>>>
+  Mesh<V, PC>& operator<<(const Mesh<V, PointCloud>& m);
+
+
 protected:
 
   uint n;
@@ -117,15 +124,21 @@ protected:
 
 template<typename V, typename PointCloud>
 inline Mesh<V, PointCloud>::Mesh(
-  const uint N,
   const PointCloud& vertices,
   const std::vector<vert_handle>& indices)
 
   //: PointCloud(vertices) , _indices(new_indices) {
-  : n(N), BaseMesh<V, PointCloud>::BaseMesh(vertices, indices) {
+  : n(INVALID_FACE_SIZE), BaseMesh<V, PointCloud>::BaseMesh(vertices, indices) {
 
 	if(!is_valid())
     throw std::invalid_argument("Non valid indices count or invalid vert_handle in the indices");
+}
+
+
+template<typename V, typename PointCloud>
+inline void Mesh<V, PointCloud>::clear() {
+  BaseMesh<V, PointCloud>::clear();
+  n = uint(INVALID_FACE_SIZE);
 }
 
 
@@ -143,7 +156,11 @@ inline Mesh<V, PointCloud>::face_handle Mesh<V, PointCloud>::add_face(
   const IterType& end_it
 ) {
 
-  if (std::distance(begin_it, end_it) != n)
+  uint new_face_size = std::distance(begin_it, end_it);
+  
+  if (n == INVALID_FACE_SIZE)
+    n = new_face_size;
+  else if (new_face_size != n)
     throw std::invalid_argument("The size of the new vector _indices should be equal to the constant face size N");
 
   if (!are_valid_indices(begin_it, end_it))
@@ -236,6 +253,38 @@ Mesh<V, PointCloud>::Mesh(const MeshType& mesh) : BaseMesh<V, PointCloud>(mesh) 
         throw std::out_of_range("All faces should have a fixed size of incident vertices");
     }
 }
+
+
+template <typename V, typename PointCloud>
+template <typename PC, typename>
+inline Mesh<V, PC>& Mesh<V, PointCloud>::operator<<(const Mesh<V, PointCloud>& m) {
+
+  if (n != m.n)
+    throw std::invalid_argument("The two meshes that you want to concatenate, should be of the same face count for all faces");
+
+  BaseMesh<V, PointCloud>::operator<<(m);
+
+  return *this;
+
+/*  uint new_verts_begin = this->_vertices.size();  
+  this->_vertices.insert(this->_vertices.end(), m._vertices.begin(), m._vertices.end());
+
+  std::vector<vert_handle> new_face;
+  new_face.reserve(n);
+
+  for (face_handle fh : m.faces()) {
+    new_face.clear();
+
+    for (vert_handle vh : m.verts(fh))
+      new_face.push_back(vh + new_verts_begin);
+
+    add_face(new_face);
+  }
+
+  return *this;*/
+
+}
+
 
 
 /*template<typename V, uint N, typename PointCloud>

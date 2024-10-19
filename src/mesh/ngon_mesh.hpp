@@ -35,6 +35,8 @@ public:
   using BaseMesh<V, PointCloud>::is_in_range;
   using BaseMesh<V, PointCloud>::is_valid;
 
+  using BaseMesh<V, PointCloud>::empty;
+  void clear();
 
   NgonMesh(const PointCloud& verts = PointCloud())
     : BaseMesh<V, PointCloud>::BaseMesh(verts)
@@ -90,7 +92,11 @@ public:
   Iterable<typename std::vector<vert_handle>::const_iterator> verts(const face_handle fh) const;
 //  Iterable<typename std::vector<vert_handle>::iterator> verts(const face_handle fh);
   Iterable<face_handle> faces() const;	
-	
+
+
+  template <typename PC = PointCloud, typename = typename std::enable_if<std::is_base_of_v<pc::PointVec<V>, PC>>>
+  NgonMesh<V, PC>& operator<<(const NgonMesh<V, PointCloud>& m);
+
 
 protected:
 
@@ -103,6 +109,13 @@ protected:
 
 
 // ========================================================================== //
+
+
+template <typename V, typename PointCloud>
+inline void NgonMesh<V, PointCloud>::clear() {
+  BaseMesh<V, PointCloud>::clear();
+  _faces.clear();
+}
 
 
 template <typename V, typename PointCloud>
@@ -241,6 +254,21 @@ inline NgonMesh<V, PointCloud>::NgonMesh(const MeshType& mesh)
   }
       
 }
+
+
+template <typename V, typename PointCloud>
+template <typename PC, typename>
+inline NgonMesh<V, PC>& NgonMesh<V, PointCloud>::operator<<(const NgonMesh<V, PointCloud>& m) {
+  
+  uint new_faces_begin = this->_indices.size();
+  BaseMesh<V, PointCloud>::operator<<(m);
+
+  for (auto pairr : m._faces)
+    _faces.push_back({pairr.first + new_faces_begin, pairr.second});
+
+  return *this;
+}
+
 
 /*
 template <typename V, typename PointCloud>

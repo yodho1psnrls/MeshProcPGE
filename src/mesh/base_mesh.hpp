@@ -26,10 +26,14 @@ public:
   //using PointCloud::PointCloud;
   using PointCloud::vert;
 
+  void clear();
+
+  bool empty() const;
   bool is_valid() const;
+
   using PointCloud::are_valid_indices;
   using PointCloud::is_in_range;
-//  using PointCloud::reserve_verts;
+  using PointCloud::reserve_verts;
 
   /*template <typename IterType>
   inline face_handle add_face(
@@ -49,6 +53,10 @@ public:
 
   void reserve_indices(size_t new_capacity);
 
+  template <typename PC = PointCloud, typename = typename std::enable_if<std::is_base_of_v<pc::PointVec<V>, PC>>>
+  BaseMesh<V, PC>& operator<<(const BaseMesh<V, PointCloud>& m);
+
+
 protected:
  
 	std::vector<vert_handle> _indices{};
@@ -59,14 +67,27 @@ protected:
   // ======================= IMPLEMENTATION ========================= //
 
 
-  template <typename V, typename PointCloud>
-  inline bool BaseMesh<V, PointCloud>::is_valid() const {
-    for(vert_handle vh : _indices)
-      if (!is_in_range(vh))
-        return false;
+template <typename V, typename PointCloud>
+inline void BaseMesh<V, PointCloud>::clear() {
+  PointCloud::clear();
+  _indices.clear();
+}
 
-    return true;
-  }
+
+template <typename V, typename PointCloud>
+inline bool BaseMesh<V, PointCloud>::empty() const {
+  return PointCloud::empty() && _indices.empty();
+}
+
+
+template <typename V, typename PointCloud>
+inline bool BaseMesh<V, PointCloud>::is_valid() const {
+  for(vert_handle vh : _indices)
+    if (!is_in_range(vh))
+      return false;
+  
+  return true;
+}
 
 
 template <typename V, typename PointCloud>
@@ -100,6 +121,23 @@ inline typename BaseMesh<V, PointCloud>::face_handle BaseMesh<V, PointCloud>::ad
 	return add_face(new_indices.begin(), new_indices.end());
 }
 */
+
+
+template <typename V, typename PointCloud>
+template <typename PC, typename>
+inline BaseMesh<V, PC>& BaseMesh<V, PointCloud>::operator<<(const BaseMesh<V, PointCloud>& m) {
+
+  uint new_verts_begin = this->_vertices.size();  
+  this->_vertices.insert(this->_vertices.end(), m._vertices.begin(), m._vertices.end());
+
+  _indices.reserve(_indices.size() + m._indices.size());
+
+  for (vert_handle vh : m._indices)
+    _indices.push_back(vh + new_verts_begin);
+  
+  return *this;
+}
+
 
 
 }
